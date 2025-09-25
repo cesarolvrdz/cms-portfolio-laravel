@@ -15,17 +15,17 @@ try {
         die("ERROR: Autoload file not found at: " . $autoloadPath);
     }
     echo "DEBUG: Autoload found\n";
-    
+
     require $autoloadPath;
     echo "DEBUG: Autoload loaded\n";
 
     // Check if bootstrap exists
     $bootstrapPath = __DIR__ . '/../bootstrap/app.php';
     if (!file_exists($bootstrapPath)) {
-        die("ERROR: Bootstrap file not found at: " . $bootstrapPath);  
+        die("ERROR: Bootstrap file not found at: " . $bootstrapPath);
     }
     echo "DEBUG: Bootstrap found\n";
-    
+
     $app = require_once $bootstrapPath;
     echo "DEBUG: App bootstrapped\n";
 

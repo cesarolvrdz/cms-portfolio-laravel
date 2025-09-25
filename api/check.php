@@ -15,7 +15,7 @@ echo "Bootstrap exists: " . (file_exists(__DIR__ . '/../bootstrap/app.php') ? 'Y
 echo "<h2>Environment Variables</h2>";
 $envVars = [
     'APP_ENV',
-    'APP_DEBUG', 
+    'APP_DEBUG',
     'APP_KEY',
     'SUPABASE_URL',
     'SUPABASE_KEY',
@@ -43,10 +43,10 @@ try {
     require __DIR__ . '/../vendor/autoload.php';
     echo "<h2>Laravel Test</h2>";
     echo "Autoload: SUCCESS<br>";
-    
+
     $app = require_once __DIR__ . '/../bootstrap/app.php';
     echo "Bootstrap: SUCCESS<br>";
-    
+
 } catch (\Exception $e) {
     echo "<h2>Laravel Test - ERROR</h2>";
     echo "Error: " . $e->getMessage() . "<br>";

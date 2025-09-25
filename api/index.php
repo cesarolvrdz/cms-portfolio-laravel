@@ -18,13 +18,13 @@ try {
     $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
     $request = Illuminate\Http\Request::capture();
     $response = $kernel->handle($request);
-    
+
     $response->send();
     $kernel->terminate($request, $response);
 
 } catch (\Throwable $e) {
     http_response_code(500);
-    
+
     // In production, don't show detailed errors to users
     if ($_ENV['APP_DEBUG'] ?? false) {
         echo "Error: " . $e->getMessage() . "\n";
@@ -32,7 +32,7 @@ try {
     } else {
         echo "Internal Server Error";
     }
-    
+
     // Log the error (Vercel will capture this)
     error_log("Laravel Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
 }
