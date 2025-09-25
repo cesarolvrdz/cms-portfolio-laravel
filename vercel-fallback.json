@@ -2,13 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.7.1"
-    },
-    "api/index-debug.php": {
-      "runtime": "vercel-php@0.7.1"
-    },
-    "api/check.php": {
-      "runtime": "vercel-php@0.7.1"
+      "runtime": "vercel-php@0.6.1"
     }
   },
   "routes": [
@@ -38,10 +32,5 @@
     "APP_DEBUG": "false",
     "LOG_CHANNEL": "stderr",
     "SESSION_DRIVER": "cookie"
-  },
-  "build": {
-    "env": {
-      "COMPOSER_ALLOW_SUPERUSER": "1"
-    }
   }
 }
