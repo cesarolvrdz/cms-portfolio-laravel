@@ -32,5 +32,10 @@
     "APP_DEBUG": "false",
     "LOG_CHANNEL": "stderr",
     "SESSION_DRIVER": "cookie"
+  },
+  "build": {
+    "env": {
+      "COMPOSER_ALLOW_SUPERUSER": "1"
+    }
   }
 }
