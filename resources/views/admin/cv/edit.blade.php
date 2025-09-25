@@ -1,0 +1,286 @@
+@extends('layouts.admin')
+
+@section('title', 'Editar CV')
+
+@section('content')
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-edit text-primary me-2"></i>
+                Editar CV
+            </h1>
+            <p class="text-muted">Modifica la información del CV: {{ $cvDocument['title'] }}</p>
+        </div>
+        <a href="{{ route('admin.cv.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>
+            Volver a la lista
+        </a>
+    </div>
+
+    <form action="{{ route('admin.cv.update', $cvDocument['id']) }}" method="POST" enctype="multipart/form-data">
+        @csrf
+        @method('PUT')
+        <div class="row">
+            <!-- Información Principal -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Información del CV
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="title" class="form-label">Título del CV *</label>
+                                <input type="text"
+                                       class="form-control @error('title') is-invalid @enderror"
+                                       id="title"
+                                       name="title"
+                                       value="{{ old('title', $cvDocument['title']) }}"
+                                       required>
+                                @error('title')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="version" class="form-label">Versión</label>
+                                <input type="text"
+                                       class="form-control @error('version') is-invalid @enderror"
+                                       id="version"
+                                       name="version"
+                                       value="{{ old('version', $cvDocument['version']) }}"
+                                       placeholder="1.0">
+                                @error('version')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="language" class="form-label">Idioma *</label>
+                                <select class="form-select @error('language') is-invalid @enderror"
+                                        id="language"
+                                        name="language"
+                                        required>
+                                    <option value="es" {{ old('language', $cvDocument['language']) == 'es' ? 'selected' : '' }}>Español</option>
+                                    <option value="en" {{ old('language', $cvDocument['language']) == 'en' ? 'selected' : '' }}>English</option>
+                                    <option value="fr" {{ old('language', $cvDocument['language']) == 'fr' ? 'selected' : '' }}>Français</option>
+                                    <option value="de" {{ old('language', $cvDocument['language']) == 'de' ? 'selected' : '' }}>Deutsch</option>
+                                    <option value="pt" {{ old('language', $cvDocument['language']) == 'pt' ? 'selected' : '' }}>Português</option>
+                                </select>
+                                @error('language')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Descripción</label>
+                            <textarea class="form-control @error('description') is-invalid @enderror"
+                                      id="description"
+                                      name="description"
+                                      rows="3"
+                                      placeholder="Describe esta versión del CV...">{{ old('description', $cvDocument['description']) }}</textarea>
+                            @error('description')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Lateral -->
+            <div class="col-lg-4">
+                <!-- Archivo PDF Actual -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-file-pdf me-2"></i>
+                            Archivo Actual
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-file-pdf fa-3x text-danger me-3"></i>
+                            <div>
+                                <h6 class="mb-1">{{ basename($cvDocument['file_url']) }}</h6>
+                                <small class="text-muted">
+                                    @if($cvDocument['file_size'])
+                                        {{ number_format($cvDocument['file_size'] / 1024 / 1024, 1) }} MB
+                                    @endif
+                                    | Subido: {{ \Carbon\Carbon::parse($cvDocument['created_at'])->format('d/m/Y') }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <a href="{{ $cvDocument['file_url'] }}"
+                               target="_blank"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-external-link-alt me-1"></i>
+                                Ver Archivo Actual
+                            </a>
+                            <a href="{{ route('admin.cv.preview', $cvDocument['id']) }}"
+                               class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-eye me-1"></i>
+                                Vista Previa
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reemplazar Archivo -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-upload me-2"></i>
+                            Reemplazar Archivo
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="file"
+                                   class="form-control @error('pdf') is-invalid @enderror"
+                                   id="pdf"
+                                   name="pdf"
+                                   accept=".pdf">
+                            <div class="form-text">Nuevo archivo PDF (máximo 20MB). Déjalo vacío para mantener el actual.</div>
+                            @error('pdf')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <!-- Información del nuevo archivo -->
+                        <div id="file-info" class="alert alert-info" style="display: none;">
+                            <h6 class="alert-heading">Nuevo archivo:</h6>
+                            <p class="mb-1"><strong>Nombre:</strong> <span id="file-name"></span></p>
+                            <p class="mb-0"><strong>Tamaño:</strong> <span id="file-size"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-cog me-2"></i>
+                            Configuración
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   id="is_current"
+                                   name="is_current"
+                                   value="1"
+                                   {{ old('is_current', $cvDocument['is_current']) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="is_current">
+                                <i class="fas fa-star text-warning me-1"></i>
+                                Establecer como CV actual
+                            </label>
+                            <div class="form-text">El CV actual es el que se descarga desde el portafolio</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estadísticas -->
+                @if($cvDocument['download_count'] > 0)
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Estadísticas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ $cvDocument['download_count'] }}</h3>
+                            <p class="text-muted mb-0">Descargas totales</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Botones de acción -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                Actualizar CV
+                            </button>
+                            <a href="{{ route('admin.cv.index') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>
+                                Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mostrar información del nuevo archivo seleccionado
+    const pdfInput = document.getElementById('pdf');
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+
+    pdfInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+
+            // Validar tamaño del archivo (20MB)
+            if (file.size > 20 * 1024 * 1024) {
+                alert('El archivo es demasiado grande. El tamaño máximo es 20MB.');
+                pdfInput.value = '';
+                fileInfo.style.display = 'none';
+            }
+        } else {
+            fileInfo.style.display = 'none';
+        }
+    });
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Validación del formulario
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const title = document.getElementById('title').value.trim();
+        const language = document.getElementById('language').value;
+        const pdf = document.getElementById('pdf').files[0];
+
+        if (!title || !language) {
+            e.preventDefault();
+            alert('Por favor completa todos los campos obligatorios.');
+            return;
+        }
+
+        if (pdf && pdf.type !== 'application/pdf') {
+            e.preventDefault();
+            alert('Por favor selecciona un archivo PDF válido.');
+            return;
+        }
+    });
+});
+</script>
+@endpush
+@endsection
