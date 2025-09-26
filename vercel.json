@@ -24,7 +24,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/api/index.php"
+      "dest": "/api/cms.php"
     }
   ]
 }
