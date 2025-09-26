@@ -47,5 +47,5 @@
       "COMPOSER_ALLOW_SUPERUSER": "1"
     }
   },
-  "buildCommand": "php build-debug.php && composer install --no-dev --optimize-autoloader"
+  "installCommand": "composer install --no-dev --optimize-autoloader"
 }
