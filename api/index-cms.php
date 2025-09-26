@@ -43,6 +43,9 @@ try {
         'VIEW_COMPILED_PATH' => '/tmp/storage/framework/views',
         'CACHE_PATH' => '/tmp/storage/framework/cache',
 
+        // Bootstrap cache path - CRÍTICO para Laravel
+        'BOOTSTRAP_CACHE_PATH' => '/tmp/bootstrap/cache',
+
         // Filesystem
         'FILESYSTEM_DISK' => 'local',
     ];
@@ -63,18 +66,36 @@ try {
         }
     }
 
-    // Crear directorios necesarios
+    // Crear directorios necesarios para Laravel
     $directories = [
         '/tmp/storage/framework/cache/data',
         '/tmp/storage/framework/sessions',
         '/tmp/storage/framework/views',
         '/tmp/storage/logs',
-        '/tmp/storage/app/public'
+        '/tmp/storage/app/public',
+        // CRÍTICO: Directorio de cache de bootstrap para Laravel
+        '/tmp/bootstrap/cache',
+        __DIR__ . '/../bootstrap/cache'
     ];
 
     foreach ($directories as $dir) {
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
+        }
+        // Asegurar permisos de escritura
+        if (is_dir($dir)) {
+            chmod($dir, 0777);
+        }
+    }
+
+    // Crear symlink del cache de bootstrap si no existe
+    $bootstrapCache = __DIR__ . '/../bootstrap/cache';
+    $tmpBootstrapCache = '/tmp/bootstrap/cache';
+
+    if (is_dir($tmpBootstrapCache) && !is_dir($bootstrapCache)) {
+        // Crear symlink desde el directorio real al tmp escribible
+        if (!file_exists($bootstrapCache)) {
+            symlink($tmpBootstrapCache, $bootstrapCache);
         }
     }
 
@@ -83,6 +104,21 @@ try {
     if (!file_exists($dbPath)) {
         touch($dbPath);
         chmod($dbPath, 0666);
+    }
+
+    // Crear archivos de cache necesarios para Laravel
+    $cacheFiles = [
+        '/tmp/bootstrap/cache/packages.php' => '<?php return [];',
+        '/tmp/bootstrap/cache/services.php' => '<?php return [];',
+        __DIR__ . '/../bootstrap/cache/packages.php' => '<?php return [];',
+        __DIR__ . '/../bootstrap/cache/services.php' => '<?php return [];'
+    ];
+
+    foreach ($cacheFiles as $file => $content) {
+        if (!file_exists($file)) {
+            file_put_contents($file, $content);
+            chmod($file, 0666);
+        }
     }
 
     // Bootstrap Laravel application
