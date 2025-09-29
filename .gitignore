@@ -12,6 +12,10 @@
 /storage/framework/views/
 .env
 .env.backup
+.env.local
+.env.production
+database/database.sqlite
+*.sqlite
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
