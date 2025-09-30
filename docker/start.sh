@@ -3,21 +3,7 @@
 # Start script for Railway deployment
 set -e
 
-echo "Starting L# Test Laravel configuration with the new APP_KEY
-echo "Testing Laravel configuration with APP_KEY..."
-php artisan env 2>/dev/null | head -5 || echo "Environment command failed"
-
-# Check if Laravel can read the APP_KEY from configuration
-echo "Verifying Laravel APP_KEY configuration..."
-# Use a more direct test that doesn't trigger cache operations
-if php -r 'require_once "vendor/autoload.php"; $dotenv = Dotenv\Dotenv::createImmutable(__DIR__); $dotenv->load(); echo "Direct ENV APP_KEY: " . ($_ENV["APP_KEY"] ?? "MISSING") . PHP_EOL;' 2>/dev/null | grep -q "base64:"; then
-    echo "✓ APP_KEY is accessible from environment"
-else
-    echo "⚠ APP_KEY not found in environment, clearing all caches..."
-    rm -rf bootstrap/cache/*.php || true
-    rm -rf storage/framework/cache/data/* || true
-    sleep 2
-finitialization..."
+echo "Starting Laravel container initialization..."
 
 # Set proper working directory
 cd /var/www
@@ -87,24 +73,18 @@ fi
 # Verify the key was set
 echo "Current APP_KEY: $(grep APP_KEY .env)"
 
-# Test Laravel configuration loading with the new APP_KEY
+# Test basic Laravel functionality
 echo "Testing Laravel configuration with APP_KEY..."
 php artisan env 2>/dev/null | head -5 || echo "Environment command failed"
 
-# Check if Laravel can read the APP_KEY from configuration
-echo "Verifying Laravel APP_KEY configuration..."
-if php -r "
-require_once 'vendor/autoload.php';
-\$app = require_once 'bootstrap/app.php';
-\$config = \$app->make('config');
-echo 'APP_KEY from Laravel config: ' . (\$config->get('app.key') ? 'PRESENT' : 'MISSING') . PHP_EOL;
-" 2>/dev/null | grep -q "PRESENT"; then
-    echo "✓ Laravel can read APP_KEY from configuration"
+# Simple APP_KEY verification without triggering cache operations
+echo "Verifying APP_KEY is set..."
+if grep -q "APP_KEY=base64:" .env; then
+    echo "✓ APP_KEY is properly set in .env file"
 else
-    echo "⚠ Laravel cannot read APP_KEY, clearing all caches..."
-    php artisan config:clear --quiet || true
-    php artisan cache:clear --quiet || true
+    echo "⚠ APP_KEY not found, clearing caches..."
     rm -rf bootstrap/cache/*.php || true
+    rm -rf storage/framework/cache/data/* || true
     sleep 2
 fi
 
