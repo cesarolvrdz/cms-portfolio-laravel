@@ -142,22 +142,59 @@ rm -rf bootstrap/cache/*.php || true
 echo "Running migrations..."
 php artisan migrate --force || echo "Migration failed, database may not be ready"
 
-# Cache configuration and routes for better performance
-echo "Caching application configuration..."
-# Force clear any cached config first to ensure fresh config
+# CRITICAL: Clear all cached configuration before caching new config with APP_KEY
+echo "Clearing all cached configuration before final setup..."
 php artisan config:clear --quiet || true
-# Then cache with the new APP_KEY
-php artisan config:cache --quiet || echo "Config cache failed, continuing..."
-# Skip route cache to avoid URI issues during startup
-echo "Skipping route cache to avoid startup issues..."
+rm -rf bootstrap/cache/config.php || true
+rm -rf bootstrap/cache/services.php || true
 
-# Skip view caching during startup to avoid issues
+# Test that Laravel can read the APP_KEY BEFORE caching
+echo "Testing Laravel can read APP_KEY before caching..."
+if php artisan tinker --execute="echo config('app.key') ? 'APP_KEY READABLE' : 'APP_KEY MISSING';" 2>/dev/null | grep -q "APP_KEY READABLE"; then
+    echo "✓ Laravel can read APP_KEY, proceeding with config cache"
+    
+    # Now cache configuration with the verified APP_KEY
+    echo "Caching application configuration with verified APP_KEY..."
+    php artisan config:cache --quiet || echo "Config cache failed, continuing without cache..."
+    
+    # Verify the cached config includes APP_KEY
+    echo "Verifying cached config includes APP_KEY..."
+    if php artisan tinker --execute="echo config('app.key') ? 'CACHED APP_KEY OK' : 'CACHED APP_KEY MISSING';" 2>/dev/null | grep -q "CACHED APP_KEY OK"; then
+        echo "✓ Cached configuration includes APP_KEY"
+    else
+        echo "⚠ Cached configuration missing APP_KEY, clearing cache"
+        php artisan config:clear --quiet || true
+    fi
+else
+    echo "⚠ Laravel cannot read APP_KEY, skipping config cache"
+    echo "This will use .env file directly (slower but should work)"
+fi
+
+# Skip route cache to avoid startup issues
+echo "Skipping route cache to avoid startup issues..."
 echo "Skipping view cache during startup..."
 
 # Final APP_KEY verification before starting services
 echo "=== FINAL APP_KEY VERIFICATION ==="
 echo "Environment file APP_KEY:"
 grep "^APP_KEY=" .env || echo "No APP_KEY found in .env file!"
+
+echo "Laravel configuration test:"
+if php artisan tinker --execute="echo 'Laravel APP_KEY: ' . (config('app.key') ? 'PRESENT' : 'MISSING');" 2>/dev/null | grep -q "PRESENT"; then
+    echo "✅ Laravel APP_KEY verification PASSED"
+else
+    echo "❌ Laravel APP_KEY verification FAILED - clearing all caches and retrying"
+    php artisan config:clear --quiet || true
+    php artisan cache:clear --quiet || true
+    rm -rf bootstrap/cache/*.php || true
+    
+    # Test again after clearing caches
+    if php artisan tinker --execute="echo 'Laravel APP_KEY after clear: ' . (config('app.key') ? 'PRESENT' : 'MISSING');" 2>/dev/null | grep -q "PRESENT"; then
+        echo "✅ Laravel APP_KEY verification PASSED after cache clear"
+    else
+        echo "⚠️ Laravel APP_KEY still not accessible - will use .env directly"
+    fi
+fi
 
 echo "Direct environment variable check:"
 php -r 'require_once "vendor/autoload.php"; $dotenv = Dotenv\Dotenv::createImmutable(__DIR__); $dotenv->load(); echo "APP_KEY: " . ($_ENV["APP_KEY"] ? "SET (" . substr($_ENV["APP_KEY"], 0, 15) . "...)" : "NOT SET") . PHP_EOL; echo "CACHE_STORE: " . ($_ENV["CACHE_STORE"] ?? "default") . PHP_EOL;' 2>/dev/null || echo "Environment verification failed"
