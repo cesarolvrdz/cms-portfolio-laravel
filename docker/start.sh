@@ -10,12 +10,7 @@ php artisan env 2>/dev/null | head -5 || echo "Environment command failed"
 # Check if Laravel can read the APP_KEY from configuration
 echo "Verifying Laravel APP_KEY configuration..."
 # Use a more direct test that doesn't trigger cache operations
-if php -r "
-require_once 'vendor/autoload.php';
-\$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-\$dotenv->load();
-echo 'Direct ENV APP_KEY: ' . (\$_ENV['APP_KEY'] ?? 'MISSING') . PHP_EOL;
-" 2>/dev/null | grep -q "base64:"; then
+if php -r 'require_once "vendor/autoload.php"; $dotenv = Dotenv\Dotenv::createImmutable(__DIR__); $dotenv->load(); echo "Direct ENV APP_KEY: " . ($_ENV["APP_KEY"] ?? "MISSING") . PHP_EOL;' 2>/dev/null | grep -q "base64:"; then
     echo "✓ APP_KEY is accessible from environment"
 else
     echo "⚠ APP_KEY not found in environment, clearing all caches..."
@@ -185,13 +180,7 @@ echo "Environment file APP_KEY:"
 grep "^APP_KEY=" .env || echo "No APP_KEY found in .env file!"
 
 echo "Direct environment variable check:"
-php -r "
-require_once 'vendor/autoload.php';
-\$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-\$dotenv->load();
-echo 'APP_KEY: ' . (\$_ENV['APP_KEY'] ? 'SET (' . substr(\$_ENV['APP_KEY'], 0, 15) . '...)' : 'NOT SET') . PHP_EOL;
-echo 'CACHE_STORE: ' . (\$_ENV['CACHE_STORE'] ?? 'default') . PHP_EOL;
-" 2>/dev/null || echo "Environment verification failed"
+php -r 'require_once "vendor/autoload.php"; $dotenv = Dotenv\Dotenv::createImmutable(__DIR__); $dotenv->load(); echo "APP_KEY: " . ($_ENV["APP_KEY"] ? "SET (" . substr($_ENV["APP_KEY"], 0, 15) . "...)" : "NOT SET") . PHP_EOL; echo "CACHE_STORE: " . ($_ENV["CACHE_STORE"] ?? "default") . PHP_EOL;' 2>/dev/null || echo "Environment verification failed"
 
 # Ensure .env file has proper permissions
 chmod 644 .env
