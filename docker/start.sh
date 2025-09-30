@@ -42,12 +42,26 @@ rm -rf storage/framework/views/* || true
 php artisan config:clear --quiet || echo "Config clear failed, continuing..."
 
 # Generate app key if not set
+echo "Checking APP_KEY..."
 if ! grep -q "APP_KEY=base64:" .env; then
     echo "Generating application key..."
-    # Set minimal config first
-    export APP_URL="http://localhost:8080"
-    php artisan key:generate --force --quiet
+    # Generate a random key manually since artisan might not work
+    APP_KEY="base64:$(openssl rand -base64 32)"
+    echo "Generated key: $APP_KEY"
+    # Update .env file
+    sed -i "s|APP_KEY=.*|APP_KEY=$APP_KEY|g" .env
+    echo "APP_KEY set in .env file"
+else
+    echo "APP_KEY already exists in .env"
 fi
+
+# Verify the key was set
+echo "Current APP_KEY: $(grep APP_KEY .env)"
+
+# Stop any existing PHP-FPM processes to avoid port conflicts
+echo "Cleaning up any existing PHP-FPM processes..."
+pkill -f php-fpm || true
+sleep 2
 
 # Ensure we have proper configuration
 echo "Setting production environment..."
@@ -98,18 +112,12 @@ mkdir -p /var/log/nginx /var/log/supervisor
 touch /var/log/nginx/access.log /var/log/nginx/error.log
 chown -R www-data:www-data /var/log/nginx
 
-# Start PHP-FPM in background
-echo "Starting PHP-FPM..."
-php-fpm --daemonize
+# Don't start PHP-FPM here since supervisor will handle it
+echo "PHP-FPM will be managed by supervisor..."
 
-# Wait a moment for PHP-FPM to start
-sleep 2
-
-# Test that PHP-FPM is running
-if ! pgrep php-fpm > /dev/null; then
-    echo "ERROR: PHP-FPM failed to start"
-    exit 1
-fi
+# Show final .env for debugging
+echo "Final .env contents:"
+cat .env
 
 # Start supervisor to manage nginx
 echo "Starting supervisor..."
