@@ -34,14 +34,30 @@ else
     sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
 fi
 
+# Clear bootstrap cache that might contain old config
+echo "Clearing bootstrap cache..."
+rm -rf bootstrap/cache/*.php || true
+
 # Clear any existing cache safely
-echo "Clearing caches..."
+echo "Clearing application caches..."
 rm -rf bootstrap/cache/*.php || true
 rm -rf storage/framework/cache/data/* || true
 rm -rf storage/framework/views/* || true
+
+# Force clear config cache before generating key
+export APP_URL="http://localhost:8080"
 php artisan config:clear --quiet || echo "Config clear failed, continuing..."
 
 # Generate app key if not set
+# Clear all cached configurations BEFORE checking APP_KEY
+echo "Clearing all Laravel caches before APP_KEY setup..."
+php artisan config:clear --quiet || true
+php artisan cache:clear --quiet || true
+php artisan view:clear --quiet || true
+rm -rf bootstrap/cache/*.php || true
+rm -rf storage/framework/cache/data/* || true
+rm -rf storage/framework/views/* || true
+
 echo "Checking APP_KEY..."
 if ! grep -q "APP_KEY=base64:" .env; then
     echo "Generating application key..."
@@ -57,6 +73,27 @@ fi
 
 # Verify the key was set
 echo "Current APP_KEY: $(grep APP_KEY .env)"
+
+# Test Laravel configuration loading with the new APP_KEY
+echo "Testing Laravel configuration with APP_KEY..."
+php artisan env 2>/dev/null | head -5 || echo "Environment command failed"
+
+# Check if Laravel can read the APP_KEY from configuration
+echo "Verifying Laravel APP_KEY configuration..."
+if php -r "
+require_once 'vendor/autoload.php';
+\$app = require_once 'bootstrap/app.php';
+\$config = \$app->make('config');
+echo 'APP_KEY from Laravel config: ' . (\$config->get('app.key') ? 'PRESENT' : 'MISSING') . PHP_EOL;
+" 2>/dev/null | grep -q "PRESENT"; then
+    echo "✓ Laravel can read APP_KEY from configuration"
+else
+    echo "⚠ Laravel cannot read APP_KEY, clearing all caches..."
+    php artisan config:clear --quiet || true
+    php artisan cache:clear --quiet || true
+    rm -rf bootstrap/cache/*.php || true
+    sleep 2
+fi
 
 # Stop any existing PHP-FPM processes to avoid port conflicts
 echo "Cleaning up any existing PHP-FPM processes..."
@@ -95,13 +132,31 @@ echo "Running migrations..."
 php artisan migrate --force || echo "Migration failed, database may not be ready"
 
 # Cache configuration and routes for better performance
-echo "Caching application..."
+echo "Caching application configuration..."
+# Force clear any cached config first to ensure fresh config
+php artisan config:clear --quiet || true
+# Then cache with the new APP_KEY
 php artisan config:cache --quiet || echo "Config cache failed, continuing..."
 # Skip route cache to avoid URI issues during startup
 echo "Skipping route cache to avoid startup issues..."
 
 # Skip view caching during startup to avoid issues
 echo "Skipping view cache during startup..."
+
+# Final APP_KEY verification before starting services
+echo "=== FINAL APP_KEY VERIFICATION ==="
+echo "Environment file APP_KEY:"
+grep "^APP_KEY=" .env || echo "No APP_KEY found in .env file!"
+
+echo "Laravel configuration APP_KEY test:"
+php artisan tinker --execute="
+echo 'Config APP_KEY: ' . (config('app.key') ? 'SET (' . substr(config('app.key'), 0, 15) . '...)' : 'NOT SET') . PHP_EOL;
+echo 'App canDecrypt test: ' . (app('encrypter') ? 'WORKING' : 'FAILED') . PHP_EOL;
+" 2>/dev/null || echo "Laravel APP_KEY verification failed"
+
+# Ensure .env file has proper permissions
+chmod 644 .env
+echo "=== END VERIFICATION ==="
 
 # Optimize autoloader
 echo "Optimizing autoloader..."
