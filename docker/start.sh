@@ -3,7 +3,26 @@
 # Start script for Railway deployment
 set -e
 
-echo "Starting Laravel application initialization..."
+echo "Starting L# Test Laravel configuration with the new APP_KEY
+echo "Testing Laravel configuration with APP_KEY..."
+php artisan env 2>/dev/null | head -5 || echo "Environment command failed"
+
+# Check if Laravel can read the APP_KEY from configuration
+echo "Verifying Laravel APP_KEY configuration..."
+# Use a more direct test that doesn't trigger cache operations
+if php -r "
+require_once 'vendor/autoload.php';
+\$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+\$dotenv->load();
+echo 'Direct ENV APP_KEY: ' . (\$_ENV['APP_KEY'] ?? 'MISSING') . PHP_EOL;
+" 2>/dev/null | grep -q "base64:"; then
+    echo "✓ APP_KEY is accessible from environment"
+else
+    echo "⚠ APP_KEY not found in environment, clearing all caches..."
+    rm -rf bootstrap/cache/*.php || true
+    rm -rf storage/framework/cache/data/* || true
+    sleep 2
+finitialization..."
 
 # Set proper working directory
 cd /var/www
@@ -109,6 +128,12 @@ sed -i "s|LOG_CHANNEL=.*|LOG_CHANNEL=stderr|g" .env
 echo "Setting cache driver to file to avoid database dependency..."
 sed -i "s|CACHE_STORE=.*|CACHE_STORE=file|g" .env
 
+# FORCE clear any existing cached configuration that might reference database cache
+echo "Force clearing any cached configuration..."
+rm -rf bootstrap/cache/config.php || true
+rm -rf bootstrap/cache/services.php || true
+rm -rf storage/framework/cache/data/* || true
+
 # Create storage directories and database FIRST
 echo "Creating storage directories..."
 mkdir -p storage/framework/cache/data
@@ -159,11 +184,14 @@ echo "=== FINAL APP_KEY VERIFICATION ==="
 echo "Environment file APP_KEY:"
 grep "^APP_KEY=" .env || echo "No APP_KEY found in .env file!"
 
-echo "Laravel configuration APP_KEY test:"
-php artisan tinker --execute="
-echo 'Config APP_KEY: ' . (config('app.key') ? 'SET (' . substr(config('app.key'), 0, 15) . '...)' : 'NOT SET') . PHP_EOL;
-echo 'App canDecrypt test: ' . (app('encrypter') ? 'WORKING' : 'FAILED') . PHP_EOL;
-" 2>/dev/null || echo "Laravel APP_KEY verification failed"
+echo "Direct environment variable check:"
+php -r "
+require_once 'vendor/autoload.php';
+\$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+\$dotenv->load();
+echo 'APP_KEY: ' . (\$_ENV['APP_KEY'] ? 'SET (' . substr(\$_ENV['APP_KEY'], 0, 15) . '...)' : 'NOT SET') . PHP_EOL;
+echo 'CACHE_STORE: ' . (\$_ENV['CACHE_STORE'] ?? 'default') . PHP_EOL;
+" 2>/dev/null || echo "Environment verification failed"
 
 # Ensure .env file has proper permissions
 chmod 644 .env
