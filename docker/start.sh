@@ -8,23 +8,52 @@ echo "Starting Laravel application initialization..."
 # Set proper working directory
 cd /var/www
 
-# Check if .env exists, if not create from example
+# Check if .env exists, if not create from Railway example
 if [ ! -f .env ]; then
-    echo "Creating .env from .env.example..."
-    cp .env.example .env
+    echo "Creating .env from Railway example..."
+    if [ -f .env.railway.example ]; then
+        cp .env.railway.example .env
+    else
+        cp .env.example .env
+    fi
+fi
+
+# Fix APP_URL for Railway - use Railway's provided URL or fallback
+if [ ! -z "$RAILWAY_STATIC_URL" ]; then
+    export APP_URL="https://$RAILWAY_STATIC_URL"
+    echo "Setting APP_URL to: $APP_URL"
+    # Update .env file
+    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
+elif [ ! -z "$RAILWAY_PUBLIC_DOMAIN" ]; then
+    export APP_URL="https://$RAILWAY_PUBLIC_DOMAIN"
+    echo "Setting APP_URL to: $APP_URL"
+    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
+else
+    export APP_URL="http://localhost:8080"
+    echo "Using fallback APP_URL: $APP_URL"
+    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
 fi
 
 # Clear any existing cache safely
 echo "Clearing caches..."
-php artisan config:clear || echo "Config clear failed, continuing..."
-php artisan route:clear || echo "Route clear failed, continuing..."
-php artisan view:clear || echo "View clear failed, continuing..."
+rm -rf bootstrap/cache/*.php || true
+rm -rf storage/framework/cache/data/* || true
+rm -rf storage/framework/views/* || true
+php artisan config:clear --quiet || echo "Config clear failed, continuing..."
 
 # Generate app key if not set
 if ! grep -q "APP_KEY=base64:" .env; then
     echo "Generating application key..."
-    php artisan key:generate --force
+    # Set minimal config first
+    export APP_URL="http://localhost:8080"
+    php artisan key:generate --force --quiet
 fi
+
+# Ensure we have proper configuration
+echo "Setting production environment..."
+sed -i "s|APP_ENV=.*|APP_ENV=production|g" .env
+sed -i "s|APP_DEBUG=.*|APP_DEBUG=false|g" .env
+sed -i "s|LOG_CHANNEL=.*|LOG_CHANNEL=stderr|g" .env
 
 # Create storage directories
 echo "Creating storage directories..."
@@ -53,13 +82,12 @@ php artisan migrate --force || echo "Migration failed, database may not be ready
 
 # Cache configuration and routes for better performance
 echo "Caching application..."
-php artisan config:cache || echo "Config cache failed, continuing..."
-php artisan route:cache || echo "Route cache failed, continuing..."
+php artisan config:cache --quiet || echo "Config cache failed, continuing..."
+# Skip route cache to avoid URI issues during startup
+echo "Skipping route cache to avoid startup issues..."
 
-# Cache views only if templates exist
-if [ -d "resources/views" ] && [ "$(ls -A resources/views)" ]; then
-    php artisan view:cache || echo "View cache failed, continuing..."
-fi
+# Skip view caching during startup to avoid issues
+echo "Skipping view cache during startup..."
 
 # Optimize autoloader
 echo "Optimizing autoloader..."
