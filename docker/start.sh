@@ -1,126 +1,248 @@
-#!/bin/bash
+#!/bin/bash#!/bin/bash
 
-# Start script for Railway deployment
-set -e
 
-echo "Starting Laravel container initialization..."
 
-# Set proper working directory
+# Start script for Railway deployment# Start script for Railway deployment
+
+set -eset -e
+
+
+
+echo "Starting Laravel container initialization..."echo "Starting Laravel container initialization..."
+
 cd /var/www
 
-# Check if .env exists, if not create from Railway example
+# Set proper working directory
+
+# Check if .env existscd /var/www
+
 if [ ! -f .env ]; then
-    echo "Creating .env from Railway example..."
+
+    echo "Creating .env from example..."# Check if .env exists, if not create from Railway example
+
+    cp .env.example .envif [ ! -f .env ]; then
+
+fi    echo "Creating .env from Railway example..."
+
     if [ -f .env.railway.example ]; then
-        cp .env.railway.example .env
-    else
-        cp .env.example .env
-    fi
-fi
 
-# Fix APP_URL for Railway - use Railway's provided URL or fallback
-if [ ! -z "$RAILWAY_STATIC_URL" ]; then
+# Set APP_URL from Railway        cp .env.railway.example .env
+
+if [ ! -z "$RAILWAY_STATIC_URL" ]; then    else
+
+    export APP_URL="https://$RAILWAY_STATIC_URL"        cp .env.example .env
+
+    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env    fi
+
+elsefi
+
+    echo "Using fallback APP_URL: http://localhost:8080"
+
+    sed -i "s|APP_URL=.*|APP_URL=http://localhost:8080|g" .env# Fix APP_URL for Railway - use Railway's provided URL or fallback
+
+fiif [ ! -z "$RAILWAY_STATIC_URL" ]; then
+
     export APP_URL="https://$RAILWAY_STATIC_URL"
-    echo "Setting APP_URL to: $APP_URL"
-    # Update .env file
-    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
+
+# Clear any existing caches    echo "Setting APP_URL to: $APP_URL"
+
+echo "Clearing bootstrap cache..."    # Update .env file
+
+rm -rf bootstrap/cache/*.php || true    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
+
 elif [ ! -z "$RAILWAY_PUBLIC_DOMAIN" ]; then
-    export APP_URL="https://$RAILWAY_PUBLIC_DOMAIN"
-    echo "Setting APP_URL to: $APP_URL"
-    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
-else
-    export APP_URL="http://localhost:8080"
-    echo "Using fallback APP_URL: $APP_URL"
-    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
-fi
 
-# Clear bootstrap cache that might contain old config
+echo "Clearing application caches..."    export APP_URL="https://$RAILWAY_PUBLIC_DOMAIN"
+
+rm -rf storage/framework/cache/data/* || true    echo "Setting APP_URL to: $APP_URL"
+
+    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
+
+# Generate app key if not setelse
+
+echo "Setting up initial directories..."    export APP_URL="http://localhost:8080"
+
+mkdir -p storage/framework/cache/data    echo "Using fallback APP_URL: $APP_URL"
+
+mkdir -p storage/framework/sessions    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|g" .env
+
+mkdir -p storage/framework/viewsfi
+
+mkdir -p storage/logs
+
+mkdir -p bootstrap/cache# Clear bootstrap cache that might contain old config
+
 echo "Clearing bootstrap cache..."
-rm -rf bootstrap/cache/*.php || true
 
-# Clear any existing cache safely
-echo "Clearing application caches..."
-rm -rf bootstrap/cache/*.php || true
-rm -rf storage/framework/cache/data/* || true
-rm -rf storage/framework/views/* || true
+echo "Checking APP_KEY..."rm -rf bootstrap/cache/*.php || true
 
-# Force clear config cache before generating key
-export APP_URL="http://localhost:8080"
+if ! grep -q "APP_KEY=base64:" .env; then
+
+    echo "Generating application key..."# Clear any existing cache safely
+
+    APP_KEY="base64:$(openssl rand -base64 32)"echo "Clearing application caches..."
+
+    echo "Generated key: $APP_KEY"rm -rf bootstrap/cache/*.php || true
+
+    sed -i "s|APP_KEY=.*|APP_KEY=$APP_KEY|g" .envrm -rf storage/framework/cache/data/* || true
+
+    echo "APP_KEY set in .env file"rm -rf storage/framework/views/* || true
+
+else
+
+    echo "APP_KEY already exists in .env"# Force clear config cache before generating key
+
+fiexport APP_URL="http://localhost:8080"
+
 php artisan config:clear --quiet || echo "Config clear failed, continuing..."
 
-# Generate app key if not set
-# Set up basic directories first
-echo "Setting up initial directories..."
-mkdir -p storage/framework/cache/data
-mkdir -p storage/framework/sessions
-mkdir -p storage/framework/views
-mkdir -p storage/logs
-mkdir -p bootstrap/cache
-
-echo "Checking APP_KEY..."
-if ! grep -q "APP_KEY=base64:" .env; then
-    echo "Generating application key..."
-    # Generate a random key manually since artisan might not work
-    APP_KEY="base64:$(openssl rand -base64 32)"
-    echo "Generated key: $APP_KEY"
-    # Update .env file
-    sed -i "s|APP_KEY=.*|APP_KEY=$APP_KEY|g" .env
-    echo "APP_KEY set in .env file"
-else
-    echo "APP_KEY already exists in .env"
-fi
-
-# Verify the key was set
 echo "Current APP_KEY: $(grep APP_KEY .env)"
 
-# Test basic Laravel functionality
-echo "Testing Laravel configuration with APP_KEY..."
-php artisan env 2>/dev/null | head -5 || echo "Environment command failed"
+# Generate app key if not set
 
-# Simple APP_KEY verification without triggering cache operations
-echo "Verifying APP_KEY is set..."
-if grep -q "APP_KEY=base64:" .env; then
-    echo "✓ APP_KEY is properly set in .env file"
-else
-    echo "⚠ APP_KEY not found, clearing caches..."
-    rm -rf bootstrap/cache/*.php || true
+# Simple verification# Set up basic directories first
+
+echo "Verifying APP_KEY is set..."echo "Setting up initial directories..."
+
+if grep -q "APP_KEY=base64:" .env; thenmkdir -p storage/framework/cache/data
+
+    echo "✓ APP_KEY is properly set in .env file"mkdir -p storage/framework/sessions
+
+elsemkdir -p storage/framework/views
+
+    echo "⚠ APP_KEY not found, clearing caches..."mkdir -p storage/logs
+
+    rm -rf bootstrap/cache/*.php || truemkdir -p bootstrap/cache
+
     rm -rf storage/framework/cache/data/* || true
-    sleep 2
-fi
 
-# Stop any existing PHP-FPM processes to avoid port conflicts
-echo "Cleaning up any existing PHP-FPM processes..."
-pkill -f php-fpm || true
-sleep 2
+fiecho "Checking APP_KEY..."
 
-# Ensure we have proper configuration
-echo "Setting production environment..."
-sed -i "s|APP_ENV=.*|APP_ENV=production|g" .env
-sed -i "s|APP_DEBUG=.*|APP_DEBUG=false|g" .env
-sed -i "s|LOG_CHANNEL=.*|LOG_CHANNEL=stderr|g" .env
+if ! grep -q "APP_KEY=base64:" .env; then
 
-# CRITICAL: Change cache driver to file to avoid SQLite dependency during startup
-echo "Setting cache driver to file to avoid database dependency..."
+# Stop any existing processes    echo "Generating application key..."
+
+echo "Cleaning up any existing PHP-FPM processes..."    # Generate a random key manually since artisan might not work
+
+pkill -f php-fpm || true    APP_KEY="base64:$(openssl rand -base64 32)"
+
+sleep 2    echo "Generated key: $APP_KEY"
+
+    # Update .env file
+
+# Production settings    sed -i "s|APP_KEY=.*|APP_KEY=$APP_KEY|g" .env
+
+echo "Setting production environment..."    echo "APP_KEY set in .env file"
+
+sed -i "s|APP_ENV=.*|APP_ENV=production|g" .envelse
+
+sed -i "s|APP_DEBUG=.*|APP_DEBUG=false|g" .env    echo "APP_KEY already exists in .env"
+
+sed -i "s|LOG_CHANNEL=.*|LOG_CHANNEL=stderr|g" .envfi
+
 sed -i "s|CACHE_STORE=.*|CACHE_STORE=file|g" .env
 
-# FORCE clear any existing cached configuration that might reference database cache
-echo "Force clearing any cached configuration..."
-rm -rf bootstrap/cache/config.php || true
-rm -rf bootstrap/cache/services.php || true
-rm -rf storage/framework/cache/data/* || true
+# Verify the key was set
 
-# Create storage directories and database FIRST
-echo "Creating storage directories..."
+# Clear cached configecho "Current APP_KEY: $(grep APP_KEY .env)"
+
+echo "Force clearing any cached configuration..."
+
+rm -rf bootstrap/cache/config.php || true# Test basic Laravel functionality
+
+rm -rf bootstrap/cache/services.php || trueecho "Testing Laravel configuration with APP_KEY..."
+
+rm -rf storage/framework/cache/data/* || truephp artisan env 2>/dev/null | head -5 || echo "Environment command failed"
+
+
+
+# Create storage directories# Simple APP_KEY verification without triggering cache operations
+
+echo "Creating storage directories..."echo "Verifying APP_KEY is set..."
+
+mkdir -p storage/framework/cache/dataif grep -q "APP_KEY=base64:" .env; then
+
+mkdir -p storage/framework/sessions    echo "✓ APP_KEY is properly set in .env file"
+
+mkdir -p storage/framework/viewselse
+
+mkdir -p storage/logs    echo "⚠ APP_KEY not found, clearing caches..."
+
+    rm -rf bootstrap/cache/*.php || true
+
+# Set permissions    rm -rf storage/framework/cache/data/* || true
+
+echo "Setting permissions..."    sleep 2
+
+chown -R www-data:www-data storage bootstrap/cachefi
+
+chmod -R 775 storage bootstrap/cache
+
+# Stop any existing PHP-FPM processes to avoid port conflicts
+
+# Setup SQLite databaseecho "Cleaning up any existing PHP-FPM processes..."
+
+echo "Setting up SQLite database..."pkill -f php-fpm || true
+
+touch database/database.sqlitesleep 2
+
+chown www-data:www-data database/database.sqlite
+
+chmod 664 database/database.sqlite# Ensure we have proper configuration
+
+echo "Setting production environment..."
+
+# Run migrationssed -i "s|APP_ENV=.*|APP_ENV=production|g" .env
+
+echo "Running migrations..."sed -i "s|APP_DEBUG=.*|APP_DEBUG=false|g" .env
+
+php artisan migrate --force || echo "Migration failed, continuing..."sed -i "s|LOG_CHANNEL=.*|LOG_CHANNEL=stderr|g" .env
+
+
+
+# Final verification before caching# CRITICAL: Change cache driver to file to avoid SQLite dependency during startup
+
+echo "Testing Laravel configuration..."echo "Setting cache driver to file to avoid database dependency..."
+
+if php artisan env 2>/dev/null | head -1 | grep -q "production"; thensed -i "s|CACHE_STORE=.*|CACHE_STORE=file|g" .env
+
+    echo "✓ Laravel responding correctly"
+
+    # FORCE clear any existing cached configuration that might reference database cache
+
+    # Clear and cache configurationecho "Force clearing any cached configuration..."
+
+    echo "Caching configuration..."rm -rf bootstrap/cache/config.php || true
+
+    php artisan config:clear --quiet || truerm -rf bootstrap/cache/services.php || true
+
+    php artisan config:cache --quiet || truerm -rf storage/framework/cache/data/* || true
+
+else
+
+    echo "⚠ Laravel not responding, skipping config cache"# Create storage directories and database FIRST
+
+fiecho "Creating storage directories..."
+
 mkdir -p storage/framework/cache/data
-mkdir -p storage/framework/sessions
-mkdir -p storage/framework/views
-mkdir -p storage/logs
+
+echo "Final verification:"mkdir -p storage/framework/sessions
+
+echo "APP_KEY: $(grep APP_KEY .env)"mkdir -p storage/framework/views
+
+echo "Starting services..."mkdir -p storage/logs
+
 mkdir -p bootstrap/cache
 
-# Set permissions early
+# Optimize autoloader
+
+composer dump-autoload --optimize --no-dev || true# Set permissions early
+
 echo "Setting permissions..."
-chown -R www-data:www-data storage bootstrap/cache
-chmod -R 755 storage bootstrap/cache
+
+echo "Starting supervisor..."chown -R www-data:www-data storage bootstrap/cache
+
+exec /usr/bin/supervisord -c /etc/supervisor/supervisord.confchmod -R 755 storage bootstrap/cache
 chmod -R 775 storage/logs
 
 # Create SQLite database before any cache operations
@@ -152,11 +274,11 @@ rm -rf bootstrap/cache/services.php || true
 echo "Testing Laravel can read APP_KEY before caching..."
 if php artisan tinker --execute="echo config('app.key') ? 'APP_KEY READABLE' : 'APP_KEY MISSING';" 2>/dev/null | grep -q "APP_KEY READABLE"; then
     echo "✓ Laravel can read APP_KEY, proceeding with config cache"
-    
+
     # Now cache configuration with the verified APP_KEY
     echo "Caching application configuration with verified APP_KEY..."
     php artisan config:cache --quiet || echo "Config cache failed, continuing without cache..."
-    
+
     # Verify the cached config includes APP_KEY
     echo "Verifying cached config includes APP_KEY..."
     if php artisan tinker --execute="echo config('app.key') ? 'CACHED APP_KEY OK' : 'CACHED APP_KEY MISSING';" 2>/dev/null | grep -q "CACHED APP_KEY OK"; then
@@ -187,7 +309,7 @@ else
     php artisan config:clear --quiet || true
     php artisan cache:clear --quiet || true
     rm -rf bootstrap/cache/*.php || true
-    
+
     # Test again after clearing caches
     if php artisan tinker --execute="echo 'Laravel APP_KEY after clear: ' . (config('app.key') ? 'PRESENT' : 'MISSING');" 2>/dev/null | grep -q "PRESENT"; then
         echo "✅ Laravel APP_KEY verification PASSED after cache clear"
