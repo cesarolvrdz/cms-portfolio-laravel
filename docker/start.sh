@@ -49,14 +49,13 @@ export APP_URL="http://localhost:8080"
 php artisan config:clear --quiet || echo "Config clear failed, continuing..."
 
 # Generate app key if not set
-# Clear all cached configurations BEFORE checking APP_KEY
-echo "Clearing all Laravel caches before APP_KEY setup..."
-php artisan config:clear --quiet || true
-php artisan cache:clear --quiet || true
-php artisan view:clear --quiet || true
-rm -rf bootstrap/cache/*.php || true
-rm -rf storage/framework/cache/data/* || true
-rm -rf storage/framework/views/* || true
+# Set up basic directories first
+echo "Setting up initial directories..."
+mkdir -p storage/framework/cache/data
+mkdir -p storage/framework/sessions
+mkdir -p storage/framework/views
+mkdir -p storage/logs
+mkdir -p bootstrap/cache
 
 echo "Checking APP_KEY..."
 if ! grep -q "APP_KEY=base64:" .env; then
@@ -106,7 +105,11 @@ sed -i "s|APP_ENV=.*|APP_ENV=production|g" .env
 sed -i "s|APP_DEBUG=.*|APP_DEBUG=false|g" .env
 sed -i "s|LOG_CHANNEL=.*|LOG_CHANNEL=stderr|g" .env
 
-# Create storage directories
+# CRITICAL: Change cache driver to file to avoid SQLite dependency during startup
+echo "Setting cache driver to file to avoid database dependency..."
+sed -i "s|CACHE_STORE=.*|CACHE_STORE=file|g" .env
+
+# Create storage directories and database FIRST
 echo "Creating storage directories..."
 mkdir -p storage/framework/cache/data
 mkdir -p storage/framework/sessions
@@ -114,18 +117,26 @@ mkdir -p storage/framework/views
 mkdir -p storage/logs
 mkdir -p bootstrap/cache
 
-# Set permissions
+# Set permissions early
 echo "Setting permissions..."
 chown -R www-data:www-data storage bootstrap/cache
-chmod -R 775 storage bootstrap/cache
+chmod -R 755 storage bootstrap/cache
+chmod -R 775 storage/logs
 
-# Create database if using SQLite
-if grep -q "DB_CONNECTION=sqlite" .env; then
+# Create SQLite database before any cache operations
+if [ "$DB_CONNECTION" = "sqlite" ] || [ -z "$DB_CONNECTION" ]; then
     echo "Setting up SQLite database..."
     touch database/database.sqlite
     chown www-data:www-data database/database.sqlite
     chmod 664 database/database.sqlite
 fi
+
+# Clear all cached configurations AFTER database exists
+echo "Clearing all Laravel caches after database setup..."
+php artisan config:clear --quiet || true
+php artisan cache:clear --quiet || true
+php artisan view:clear --quiet || true
+rm -rf bootstrap/cache/*.php || true
 
 # Run migrations if database is accessible
 echo "Running migrations..."
