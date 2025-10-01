@@ -15,6 +15,7 @@
 .env.local
 .env.production
 .env.railway
+.env.render
 database/database.sqlite
 *.sqlite
 .phpunit.result.cache
@@ -29,4 +30,14 @@ yarn-error.log
 SUPABASE_*.sql
 *_FINAL_STEPS.md
 DEPLOY_CONFIG_*.md
+RAILWAY_*.md
+RENDER_*.md
 test_*
+
+# Docker files (temporary)
+Dockerfile.tmp
+docker-compose.tmp.yml
+*.dockerfile.bak
+
+# Render deployment files (will be added later)
+# render.yaml
