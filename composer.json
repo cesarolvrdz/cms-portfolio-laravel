@@ -60,6 +60,10 @@
         "test": [
             "@php artisan config:clear --ansi",
             "@php artisan test"
+        ],
+        "post-install-cmd": [
+            "chmod +x scripts/digitalocean-deploy.sh",
+            "scripts/digitalocean-deploy.sh"
         ]
     },
     "extra": {
