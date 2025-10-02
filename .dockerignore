@@ -19,8 +19,6 @@
 .env.backup
 .env.local
 .env.production
-.env.railway
-.env.render
 
 # Database
 database/database.sqlite
@@ -49,8 +47,6 @@ README.md
 SUPABASE_*.sql
 *_FINAL_STEPS.md
 DEPLOY_CONFIG_*.md
-RAILWAY_*.md
-RENDER_*.md
 
 # Test files
 test_*

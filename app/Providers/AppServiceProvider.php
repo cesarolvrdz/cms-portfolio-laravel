@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(UrlGenerator $url): void
     {
-        // Force HTTPS in production for Render
+        // Force HTTPS in production
         if (env('APP_ENV') == 'production') {
             $url->forceScheme('https');
         }
